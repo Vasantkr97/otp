@@ -1,90 +1,147 @@
-import { useState } from "react";
+import { ChangeEvent, KeyboardEvent, useEffect, useRef, useState } from "react";
+
+
 
 const OtpLogin = () => {
-  const [phone, setPhone] = useState("");
-  const [otpSent, setOtpSent] = useState(false);
-  const [otp, setOtp] = useState(["", "", "", ""]);
-  const [verified, setVerified] = useState(false);
+  const [number, setNumber] = useState<string>("");
+  const [otpSent, setOtpSent] = useState<boolean>(false);
+  const [otp, setOtp] = useState<string[]>(["","","",""]);
+  const [verified, setVerified] = useState<boolean>(false);
+  const inputRefs = useRef<(HTMLInputElement | null)[]>([])
 
-  const handleSendOtp = () => {
-    if (phone.length === 10) {
-      setOtpSent(true);
+  //AutoFocus First Element
+  useEffect (() => {
+    if (otpSent) {
+      inputRefs.current[0]?.focus();
+    }
+  },[otpSent]);
+
+  //Number Submit handler
+  const handlerNumberSubmit = () => {
+    if (number.length === 10) {
+      setOtpSent(true)
     } else {
-      alert("Enter valid 10-digit phone number");
+      alert("Please enter a valid 10-digit Phone Number")
     }
   };
 
-  const handleChange = (value: string, index: number) => {
-    if (!/^\d*$/.test(value)) return;
+  //otp input change handler
+  const handleOtpChange = (value: string, index: number) => {
+    if (!/^\d?$/.test(value)) return;
+    
     const newOtp = [...otp];
     newOtp[index] = value;
     setOtp(newOtp);
 
-    // auto-focus next input
-    if (value && index < 3) {
-      const nextInput = document.getElementById(`otp-${index + 1}`);
-      nextInput?.focus();
+    if(value && index < 3) {
+      inputRefs.current[index+1]?.focus();
+    }
+  };
+
+  //handle BackSpace key Navigation
+  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>, index: number): void => {
+    if (e.key === "Backspace" && !otp[index] && index > 0) {
+      inputRefs.current[index-1]?.focus();
     }
   };
 
   const handleVerify = () => {
-    if (otp.join("") === "1234") {
+    const enteredOtp = otp.join("");
+    if (enteredOtp === "1234") {
       setVerified(true);
     } else {
-      alert("Invalid OTP");
+      alert("InCorrect Otp. Try 1234 for test.");
     }
   };
 
+  const handleReset = () => {
+    setNumber("")
+    setOtp(["","","",""])
+    setOtpSent(false)
+    setVerified(false)
+  }
+
+  const isOtpComplete: boolean = otp.every((digit) => digit !== "")
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100 px-4">
-      <div className="bg-white p-6 rounded-2xl shadow-md w-full max-w-sm text-center space-y-4">
-        <h2 className="text-2xl font-bold">{verified ? "Verified!" : "OTP Login"}</h2>
-
+      <div className="bg-white p-6 rounded-2xl shadow-md w-full max-w-sm space-y-4 text-center">
+        <h2 className="text-2xl font-bold text-gray-800">
+          {verified ? "✅ Verified!" : "OTP Login" }
+        </h2>
         {!otpSent ? (
           <>
             <input
               type="tel"
               maxLength={10}
-              placeholder="Enter phone number"
-              className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
+              placeholder="Enter Phone Number"
+              className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              value={number}
+              onChange={(e: ChangeEvent<HTMLInputElement>) => (
+                setNumber(e.target.value)
+              )}
             />
-            <button
-              onClick={handleSendOtp}
-              className="w-full bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600 transition"
-            >
+
+            <button 
+              onClick={handlerNumberSubmit}
+              className="w-full bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600 transition">
               Send OTP
             </button>
           </>
-        ) : !verified ? (
-          <>
-            <div className="flex justify-between gap-2">
-              {otp.map((digit, i) => (
-                <input
-                  key={i}
-                  id={`otp-${i}`}
-                  type="text"
-                  maxLength={1}
-                  value={digit}
-                  onChange={(e) => handleChange(e.target.value, i)}
-                  className="w-12 h-12 text-center text-lg border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
-                />
-              ))}
-            </div>
-            <button
-              onClick={handleVerify}
-              className="w-full bg-green-500 text-white py-2 rounded-lg hover:bg-green-600 transition"
-            >
-              Verify OTP
-            </button>
-          </>
         ) : (
-          <p className="text-green-600 font-semibold">Phone verified successfully! ✅</p>
+          !verified ? (
+            <>
+              <div className="flex justify-center gap-3">
+                {otp.map((digit, index) => (
+                  <input 
+                    key={index}
+                    type="text"
+                    inputMode="numeric" 
+                    pattern="[0-9]*"
+                    maxLength={1}
+                    value={digit}
+                    ref={(el) => (inputRefs.current[index] = el)}
+                    onChange={(e: ChangeEvent<HTMLInputElement>) => (
+                      handleOtpChange(e.target.value, index)
+                    )}
+                    onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => (
+                      handleKeyDown(e, index)
+                    )}
+                    className="w-12 h-12 text-center text-xl border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                ))}
+              </div>
+              <button
+                onClick={handleVerify}
+                disabled={!isOtpComplete}
+                className={`w-full py-2 rounded-lg mt-3 transition ${
+                  isOtpComplete ? "bg-green-500 hover:bg-green-600 text-white" :
+                  "bg-gray-300 text-gray-500 cursor-not-allowed"
+                }`}
+              >
+                Verify OTP
+              </button>
+              <button onClick={handleReset}
+                  className="text-sm text-blue-500 underline mt-2"
+                >
+                Edit Phone number
+              </button>
+            </>
+          ) : (
+            <>
+              <p className="text-green-600 font-semibold text-lg">
+                Phone 4verified successfully!
+              </p>
+            </>
+          )
         )}
       </div>
     </div>
-  );
+  )
+
+
+
+
 };
 
 export default OtpLogin;
